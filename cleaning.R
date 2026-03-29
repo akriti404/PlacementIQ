@@ -1,59 +1,75 @@
-#Load required package
+# -------------------------------
+# cleaning.R
+# Purpose: Single source of truth for data preprocessing
+# -------------------------------
+
 library(dplyr)
 
-#Load data
-data <- read.csv("data/placement.csv")
-
-# Inspect structure
-str(data)
-
-# -------------------------------
-# Cleaning
-# -------------------------------
-data <- data %>%
+# Main function to load and clean data
+load_and_clean_data <- function() {
   
-  # Remove missing CGPA rows (important feature)
-  filter(!is.na(CGPA)) %>%
+  # -------------------------------
+  # Load raw dataset (ONLY here)
+  # -------------------------------
+  data <- read.csv("data/placement.csv", stringsAsFactors = FALSE)
   
-  mutate(
-    # Target variable (IMPORTANT)
-    placed = ifelse(Placement_Status == "Placed", 1, 0),
+  # -------------------------------
+  # Basic Cleaning
+  # -------------------------------
+  data <- data %>%
     
-    # Convert categorical variables
-    Gender = as.factor(Gender),
-    Degree = as.factor(Degree),
-    Branch = as.factor(Branch),
-    Placement_Status = as.factor(Placement_Status),
+    # Remove rows with missing critical values
+    filter(!is.na(CGPA)) %>%
     
-    # Convert numeric columns safely
-    Internships = as.numeric(Internships),
-    Projects = as.numeric(Projects),
-    Coding_Skills = as.numeric(Coding_Skills),
-    Communication_Skills = as.numeric(Communication_Skills),
-    Aptitude_Test_Score = as.numeric(Aptitude_Test_Score),
-    Soft_Skills_Rating = as.numeric(Soft_Skills_Rating),
-    Certifications = as.numeric(Certifications),
-    Backlogs = as.numeric(Backlogs)
-  )
-
-# -------------------------------
-# Remove unnecessary column
-# -------------------------------
-data <- data %>% select(-Student_ID)
-
-# -------------------------------
-# Quick Checks
-# -------------------------------
-summary(data)
-
-# Check target distribution
-table(data$placed)
-
-# Check unique values
-unique(data$Placement_Status)
-
-# Preview data
-head(data)
-
-# Save cleaned data
-write.csv(data, "cleaned_data.csv", row.names = FALSE)
+    mutate(
+      # -------------------------------
+      # Target variable (DO NOT convert later)
+      # -------------------------------
+      placed = as.numeric(ifelse(Placement_Status == "Placed", 1, 0)),
+      
+      # -------------------------------
+      # Fix Gender encoding (important for UI)
+      # -------------------------------
+      Gender = case_when(
+        Gender == 1 ~ "Male",
+        Gender == 2 ~ "Female",
+        TRUE ~ as.character(Gender)
+      ),
+      
+      # -------------------------------
+      # Convert categorical features
+      # -------------------------------
+      Gender = as.factor(Gender),
+      Degree = as.factor(Degree),
+      Branch = as.factor(Branch),
+      
+      # -------------------------------
+      # Ensure numeric features are numeric
+      # -------------------------------
+      Internships = as.numeric(Internships),
+      Projects = as.numeric(Projects),
+      Coding_Skills = as.numeric(Coding_Skills),
+      Communication_Skills = as.numeric(Communication_Skills),
+      Aptitude_Test_Score = as.numeric(Aptitude_Test_Score),
+      Soft_Skills_Rating = as.numeric(Soft_Skills_Rating),
+      Certifications = as.numeric(Certifications),
+      Backlogs = as.numeric(Backlogs)
+    )
+  
+  # -------------------------------
+  # Remove irrelevant columns
+  # -------------------------------
+  if ("Student_ID" %in% colnames(data)) {
+    data <- data %>% select(-Student_ID)
+  }
+  
+  # -------------------------------
+  # Final sanity check
+  # -------------------------------
+  data <- data %>%
+    filter(!is.na(placed))
+  
+  data$placed <- as.numeric(as.character(data$placed))
+  
+  return(data)
+}
